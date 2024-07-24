@@ -1,21 +1,24 @@
 package handler
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
 	"82.GO/internal/models"
 	"82.GO/internal/mongodb"
+	"82.GO/internal/rabbitmq"
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 type MessageHandler struct {
-	db *mongodb.MessageMongodb
+	db       *mongodb.MessageMongodb
+	producer *rabbitmq.Producer
 }
 
-func NewHandler(db *mongodb.MessageMongodb) *MessageHandler {
-	return &MessageHandler{db: db}
+func NewHandler(db *mongodb.MessageMongodb, producer *rabbitmq.Producer) *MessageHandler {
+	return &MessageHandler{db: db, producer: producer}
 }
 
 func (m *MessageHandler) CreateMessage(c *gin.Context) {
@@ -26,6 +29,17 @@ func (m *MessageHandler) CreateMessage(c *gin.Context) {
 	}
 
 	message.Timestamp = time.Now()
+
+	body, err := json.Marshal(message)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	if err := m.producer.PublishMessage("message_key", body); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
 
 	c.JSON(http.StatusCreated, "message created")
 }
