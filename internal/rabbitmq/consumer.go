@@ -73,7 +73,7 @@ func StartConsumer() {
 	go func() {
 		for d := range msgs {
 			log.Printf("Received a message: %s", d.Body)
-			// Process message and store in MongoDB
+
 		}
 	}()
 
